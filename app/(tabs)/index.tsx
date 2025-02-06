@@ -1,6 +1,6 @@
-import { Image, StyleSheet, Platform } from 'react-native';
+import { Image, StyleSheet, View, TouchableOpacity, Text } from 'react-native';
+import { FontAwesome } from '@expo/vector-icons';
 
-import { HelloWave } from '@/components/HelloWave';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -11,64 +11,92 @@ export default function HomeScreen() {
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
       headerImage={
         <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
+          source={require('@/assets/images/home.png')} // Replace with the path to your dummy house image
+          style={styles.houseImage}
         />
       }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
+      <ThemedView style={styles.container}>
+        <ThemedText type="title">Documents</ThemedText>
+        <View style={styles.separator} />
+        <View style={styles.buttonRow}>
+          <TouchableOpacity style={styles.iconButton}>
+            <FontAwesome name="file-pdf-o" size={28} color="#fff" />
+            <Text style={styles.iconButtonText}>Lease</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconButton}>
+            <FontAwesome name="file-pdf-o" size={28} color="#fff" />
+            <Text style={styles.iconButtonText}>Pay Slips</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconButton}>
+            <FontAwesome name="file-pdf-o" size={28} color="#fff" />
+            <Text style={styles.iconButtonText}>Others</Text>
+          </TouchableOpacity>
+        </View>
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12'
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          Tap the Explore tab to learn more about what's included in this starter app.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          When you're ready, run{' '}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
+      <View style={styles.separator} />
+      <ThemedView style={styles.container}>
+        <ThemedText type="title">Maintenance</ThemedText>
+        <View style={styles.separator} />
+        <View style={styles.buttonRow}>
+          <TouchableOpacity style={styles.button}>
+            <Text style={styles.buttonText}>Raise Issue</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.button}>
+            <Text style={styles.buttonText}>Damage</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.button}>
+            <Text style={styles.buttonText}>Contact Owner</Text>
+          </TouchableOpacity>
+        </View>
       </ThemedView>
     </ParallaxScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  houseImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  container: {
+    padding: 16,
     alignItems: 'center',
-    gap: 8,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 16,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  iconButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#007bff',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginHorizontal: 8,
+  },
+  iconButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    marginTop: 4,
+  },
+  button: {
+    backgroundColor: '#007bff',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginHorizontal: 8,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+  },
+  separator: {
+    height: 1,
+    width: '100%',
+    backgroundColor: '#ccc',
+    marginVertical: 16,
   },
 });
