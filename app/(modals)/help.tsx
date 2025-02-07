@@ -6,7 +6,6 @@ const HelpScreen = () => {
   
   return (
     <>
-
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity>
