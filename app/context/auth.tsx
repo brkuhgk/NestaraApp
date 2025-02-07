@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setIsAuthenticated(false);
-    setHasJoinedHouse(false);
+    setHasJoinedHouse(true);
     console.log('Logged out');
   };
 

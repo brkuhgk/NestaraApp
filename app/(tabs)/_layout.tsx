@@ -8,7 +8,6 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
-import TimeBlockUI from './TimeBlockUI'; // Import the TimeBlockUI component
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();

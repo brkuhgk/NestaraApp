@@ -33,7 +33,7 @@ const ProfileScreen = () => {
     communication: 890
   };
 
-  const RatingBar = ({ label, value }) => (
+  const RatingBar = ({ label, value }: { label: string; value: number }) => (
     <View style={styles.ratingBar}>
       <View style={styles.ratingHeader}>
         <Text style={styles.ratingLabel}>{label}</Text>
@@ -62,7 +62,7 @@ const ProfileScreen = () => {
         </View>
         
         <Text style={styles.name}>John Doe</Text>
-        <Text style={styles.bio}>Friendly roommate | Clean & organized | Early bird Friendly roommate | Clean & organized | Early bird</Text>
+        <Text style={styles.bio}>Friendly roommate | Clean & organized | Early bird </Text>
         
         <View style={styles.statsContainer}>
           <View style={styles.stat}>
