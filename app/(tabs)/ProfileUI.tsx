@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { router } from 'expo-router';
+import { useAuth } from '@/app/context/auth';
+
 
 import {
   View,
@@ -13,6 +15,14 @@ import {
 import Icon from 'react-native-vector-icons/Feather';
 
 const ProfileScreen = () => {
+
+  const { logout } = useAuth();
+  
+  const handleLogout = () => {
+    logout();
+    router.replace('/(auth)/login');
+  };
+
   const [activeTab, setActiveTab] = useState('overview');
 
   const userRatings = {
@@ -120,7 +130,9 @@ const ProfileScreen = () => {
           <Text style={styles.actionText}>Help</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={[styles.actionButton, styles.logoutButton]}>
+        <TouchableOpacity style={[styles.actionButton, styles.logoutButton]}
+        onPress={handleLogout}
+        >
           <Icon name="log-out" size={24} color="#DC2626" />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>

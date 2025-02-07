@@ -9,6 +9,7 @@ import {
   FlatList,
 } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface ScheduleBlock {
   startTime: string;
@@ -145,6 +146,8 @@ const timeToPosition: TimeToPosition = (time) => {
   };
 
   return (
+
+    <SafeAreaView style={styles.container}>
     <View style={styles.container}>
       {/* Location Selection Button */}
       <TouchableOpacity onPress={showLocationModal} style={styles.locationButton}>
@@ -213,6 +216,7 @@ const timeToPosition: TimeToPosition = (time) => {
         <Text style={styles.blockButtonText}>Block Time</Text>
       </TouchableOpacity>
     </View>
+    </SafeAreaView>
   );
 }
 
