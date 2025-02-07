@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform } from 'react-native';
+import Icon from 'react-native-vector-icons/Feather';
 
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -18,13 +19,10 @@ export default function TabLayout() {
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            // Use a transparent background on iOS to show the blur effect
-            position: 'absolute',
-          },
-          default: {},
-        }),
+        tabBarShowLabel: true,
+        tabBarStyle: {
+          position: 'absolute',
+        },
       }}>
       <Tabs.Screen
         name="index"
@@ -34,12 +32,36 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="ProfileUI"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Profile',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
         }}
       />
+      <Tabs.Screen
+        name="ReportIssueUI"
+        options={{
+          title: 'Report Issue',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="exclamationmark.circle.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="TimeBlockUI"
+        
+        options={{
+          title: 'Time Block',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="clock.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="Conflicts"
+        options={{
+          title: 'Conflicts',
+          tabBarIcon: ({ color }) => <Icon name="alert-triangle" size={24} color={color} />,
+        }}
+      />
+
+      
     </Tabs>
   );
 }
