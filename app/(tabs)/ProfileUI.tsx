@@ -8,6 +8,7 @@ import {
   ScrollView,
   Image,
   StyleSheet,
+  SafeAreaView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 
@@ -35,6 +36,8 @@ const ProfileScreen = () => {
   );
 
   return (
+    <>
+    <SafeAreaView style={styles.container}>
     <ScrollView style={styles.container}>
       {/* Profile Header */}
       <View style={styles.header}>
@@ -123,6 +126,9 @@ const ProfileScreen = () => {
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </SafeAreaView>
+    </>
+    
   );
 };
 

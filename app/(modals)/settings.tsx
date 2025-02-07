@@ -1,4 +1,5 @@
 import React from 'react';
+import { router } from 'expo-router';
 import { Stack } from 'expo-router';
 import { View, Text, TouchableOpacity, StyleSheet, Switch } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
@@ -14,7 +15,10 @@ export default function SettingsScreen() {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account</Text>
-        <TouchableOpacity style={styles.settingItem}>
+        <TouchableOpacity style={styles.settingItem}
+        onPress={() => router.push('/(modals)/edit-profile')}
+
+        >
           <View style={styles.settingLeft}>
             <Icon name="user" size={20} color="#4B5563" />
             <Text style={styles.settingText}>Edit Profile</Text>
@@ -22,7 +26,9 @@ export default function SettingsScreen() {
           <Icon name="chevron-right" size={20} color="#9CA3AF" />
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.settingItem}>
+        <TouchableOpacity style={styles.settingItem}
+      onPress={() => router.push('/(modals)/change-password')}
+        >
           <View style={styles.settingLeft}>
             <Icon name="lock" size={20} color="#4B5563" />
             <Text style={styles.settingText}>Change Password</Text>

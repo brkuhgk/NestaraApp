@@ -54,7 +54,13 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="clock.fill" color={color} />,
         }}
       />
-
+      <Tabs.Screen
+        name="Conflicts"
+        options={{
+          title: 'Conflicts',
+          tabBarIcon: ({ color }) => <Icon name="alert-triangle" size={24} color={color} />,
+        }}
+      />
 
       
     </Tabs>

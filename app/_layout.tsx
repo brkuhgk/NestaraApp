@@ -39,7 +39,22 @@ export default function RootLayout() {
             headerShown: false,
             headerTitle: 'Help & Support'
           }} />
-          
+          <Stack.Screen 
+          name="(modals)/edit-profile" 
+          options={{ 
+            presentation: 'modal',
+            headerShown: false
+          }} 
+        />
+
+        <Stack.Screen 
+          name="(modals)/change-password" 
+          options={{ 
+            presentation: 'modal',
+            headerShown: false
+          }} 
+        />
+
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="auto" />

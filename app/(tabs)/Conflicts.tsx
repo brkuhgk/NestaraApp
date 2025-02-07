@@ -2,9 +2,12 @@ import React from 'react';
 import { View, Text, TouchableOpacity, FlatList, SafeAreaView, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 
+
+
+
 const ConflictsScreen = () => {
-  const [filter, setFilter] = React.useState('active');
-  
+  const [filter, setFilter] = React.useState('general');
+
   const conflicts = [
     {
       id: 1,
@@ -51,6 +54,15 @@ const ConflictsScreen = () => {
         type: "Cleanliness"
       }
   ];
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'general': return '#6B7280';  // Gray
+      case 'conflict': return '#EF4444'; // Red
+      case 'mention': return '#10B981';  // Green
+      default: return '#6B7280';
+    }
+  };
 
   const renderConflictCard = ({ item }: { item: typeof conflicts[0] }) => (
     <View style={styles.card}>
@@ -105,7 +117,7 @@ const ConflictsScreen = () => {
         </View>
         
         <View style={styles.filterTabs}>
-          {['active', 'resolved', 'all'].map(tab => (
+          {['general', 'conflict', 'mention'].map(tab => (
             <TouchableOpacity
               key={tab}
               onPress={() => setFilter(tab)}

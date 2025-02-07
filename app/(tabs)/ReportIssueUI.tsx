@@ -1,183 +1,350 @@
-import React, { useState, useRef } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, Image, ScrollView } from 'react-native';
-import { FontAwesome } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
-import { launchImageLibrary } from 'react-native-image-picker';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  TextInput,
+  Image,
+  StyleSheet,
+  ScrollView,
+  SafeAreaView,
+  Alert,
+  PermissionsAndroid, Platform
+} from 'react-native';
+import Icon from 'react-native-vector-icons/Feather';
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+const ReportScreen = () => {
+  const [description, setDescription] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedType, setSelectedType] = useState('');
+  const [image, setImage] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [isAnonymous, setIsAnonymous] = useState(false);
 
-export default function ReportIssueUI() {
-  const [issueDescription, setIssueDescription] = useState('');
-  const [issueType, setIssueType] = useState('Bug');
-  const [selectedImages, setSelectedImages] = useState<{ uri: string | undefined }[]>([]);
-  const pickerRef = useRef<Picker<string> | null>(null);
 
-  const handleAttachImage = () => {
-    const options = {
-      mediaType: 'photo' as const,
-      includeBase64: false,
-    };
 
-    launchImageLibrary(options, (response) => {
-      if (response.didCancel) {
-        console.log('User cancelled image picker');
-      } else if (response.errorCode) {
-        console.log('ImagePicker Error: ', response.errorCode, response.errorMessage);
-      } else if (response.assets && response.assets.length > 0) {
-        const newImages = response.assets.map(asset => ({ uri: asset.uri }));
-        setSelectedImages([...selectedImages, ...newImages]);
-      }
+  const categories = [
+    { id: 'cleanliness', label: 'Cleanliness' },
+    { id: 'behavior', label: 'Behavior & Cooperation' },
+    { id: 'payment', label: 'Payment History' },
+    { id: 'maintenance', label: 'Maintenance' },
+    { id: 'communication', label: 'Communication' },
+  ];
+
+  const types = [
+    { id: 'conflict', label: 'Conflict', color: '#DC2626' },
+    { id: 'mentions', label: 'Mentions', color: '#059669' },
+    { id: 'general', label: 'General', color: '#2563EB' },
+  ];
+const handleSubmit = () => {
+    if (!selectedType) {
+      Alert.alert('Error', 'Please select a report type');
+      return;
+    }
+    if (!selectedCategory) {
+      Alert.alert('Error', 'Please select a category');
+      return;
+    }
+    if (!description.trim()) {
+      Alert.alert('Error', 'Please enter a description');
+      return;
+    }
+    if (!selectedUser && !isAnonymous) {
+      Alert.alert('Error', 'Please select a user or choose to remain anonymous');
+      return;
+    }
+
+    console.log({
+      type: selectedType,
+      category: selectedCategory,
+      description,
+      image,
+      reportedUser: selectedUser,
+      isAnonymous
     });
   };
 
-  const handleRemoveImage = (index: number): void => {
-    const newImages = selectedImages.filter((_, i) => i !== index);
-    setSelectedImages(newImages);
+// In your handleImagePick function
+const handleImagePick = () => {
+  const options = {
+    mediaType: 'photo',
+    maxWidth: 300,
+    maxHeight: 300,
+    quality: 1,
   };
 
-  const handleSubmit = () => {
-    // Add logic to handle issue submission
-    console.log('Submit Issue', { issueDescription, issueType, selectedImages });
-  };
+  Alert.alert(
+    'Select Photo',
+    'Choose an option',
+    [
+      {
+        text: 'Take Photo',
+        onPress: () => {
+          launchCamera(options, response => {
+            if (!response.didCancel && !response.error) {
+              setImage(response.assets[0].uri);
+            }
+          });
+        },
+      },
+      {
+        text: 'Choose from Gallery',
+        onPress: () => {
+          launchImageLibrary(options, response => {
+            if (!response.didCancel && !response.error) {
+              setImage(response.assets[0].uri);
+            }
+          });
+        },
+      },
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+    ],
+  );
+};
 
-  const pickerOptions = [
-    { label: 'Billing', value: 'Billing Issue' },
-    { label: 'Feature Request', value: 'Feature Request' },
-    { label: 'Feedback', value: 'Feedback' },
-  ];
+
+
+
+
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>Report Issue</Text>
-      <View style={styles.pickerContainer}>
-        <Text style={styles.label}>Issue Type</Text>
-        <Picker
-          ref={pickerRef}
-          selectedValue={issueType}
-          style={styles.picker}
-          onValueChange={(itemValue) => setIssueType(itemValue)}
-        >
-          {pickerOptions.map((option, index) => (
-            <Picker.Item key={index} label={option.label} value={option.value} />
-          ))}
-        </Picker>
-      </View>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.otherContainer}>
-          <TextInput
-            style={styles.textInput}
-            placeholder="Describe your issue here..."
-            placeholderTextColor="#888"
-            multiline
-            value={issueDescription}
-            onChangeText={setIssueDescription}
-          />
-          <View style={styles.imageRow}>
-            {selectedImages.map((image, index) => (
-              <View key={index} style={styles.imageContainer}>
-                <Image source={image} style={styles.imagePreview} />
-                <TouchableOpacity style={styles.removeImageButton} onPress={() => handleRemoveImage(index)}>
-                  <FontAwesome name="times-circle" size={16} color="#fff" />
-                </TouchableOpacity>
-              </View>
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollView}>
+        <View style={styles.header}>
+          <Text style={styles.title}>Report</Text>
+        </View>
+
+        {/* Type Selection */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Report Type</Text>
+          <View style={styles.typeContainer}>
+            {types.map((type) => (
+              <TouchableOpacity
+                key={type.id}
+                style={[
+                  styles.typeButton,
+                  selectedType === type.id && { backgroundColor: type.color }
+                ]}
+                onPress={() => setSelectedType(type.id)}
+              >
+                <Text style={[
+                  styles.typeText,
+                  selectedType === type.id && styles.selectedTypeText
+                ]}>
+                  {type.label}
+                </Text>
+              </TouchableOpacity>
             ))}
-            <TouchableOpacity style={styles.addImageButton} onPress={handleAttachImage}>
-              <FontAwesome name="plus" size={24} color="#888" />
-            </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-            <Text style={styles.submitButtonText}>Submit</Text>
-          </TouchableOpacity>
+        </View>
+
+        {/* Category Selection */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Category</Text>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.categoryContainer}
+          >
+            {categories.map((category) => (
+              <TouchableOpacity
+                key={category.id}
+                style={[
+                  styles.categoryButton,
+                  selectedCategory === category.id && styles.selectedCategory
+                ]}
+                onPress={() => setSelectedCategory(category.id)}
+              >
+                <Text style={[
+                  styles.categoryText,
+                  selectedCategory === category.id && styles.selectedCategoryText
+                ]}>
+                  {category.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Description Input */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Description</Text>
+          <TextInput
+            style={styles.input}
+            multiline
+            numberOfLines={4}
+            placeholder="Describe the issue..."
+            value={description}
+            onChangeText={setDescription}
+          />
+        </View>
+        
+       
+
+        {/* Image Upload */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Add Photo</Text>
+          {image ? (
+            <View style={styles.imageContainer}>
+              <Image source={{ uri: image }} style={styles.uploadedImage} />
+              <TouchableOpacity 
+                style={styles.removeButton}
+                onPress={() => setImage(null)}
+              >
+                <Icon name="x" size={20} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity 
+              style={styles.uploadButton}
+              onPress={handleImagePick}
+            >
+              <Icon name="camera" size={24} color="#6B7280" />
+              <Text style={styles.uploadText}>Add Photo</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
-    </View>
+
+      <TouchableOpacity style={styles.submitButton}>
+        <Text style={styles.submitText}>Submit Report</Text>
+      </TouchableOpacity>
+    
+
+    </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: '#F3F4F6',
+  },
+  scrollView: {
+    flex: 1,
+    marginBottom: 20, // Adjusted to move the button up
   },
   header: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  pickerContainer: {
-    marginBottom: 100, // Increased margin to add more space
     padding: 16,
+    backgroundColor: '#FFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  section: {
+    backgroundColor: '#FFF',
+    padding: 16,
+    marginTop: 16,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 12,
+  },
+  typeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  typeButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
   },
-  label: {
-    fontSize: 20,
-    alignSelf: 'flex-start', // Move label to the left
+  typeText: {
+    color: '#4B5563',
+    fontWeight: '500',
   },
-  picker: {
-    height: 50,
-    width: '100%',
+  selectedTypeText: {
+    color: '#FFF',
   },
-  scrollContainer: {
-    flexGrow: 1,
-    paddingBottom: 16,
+  categoryContainer: {
+    paddingVertical: 8,
+    gap: 8,
   },
-  separator: {
-    height: 32,
+  categoryButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    marginRight: 8,
   },
-  otherContainer: {
-    flex: 1,
+  selectedCategory: {
+    backgroundColor: '#2563EB',
   },
-  textInput: {
-    borderWidth: 1,
-    borderColor: '#ccc',
+  categoryText: {
+    color: '#4B5563',
+  },
+  selectedCategoryText: {
+    color: '#FFF',
+  },
+  input: {
+    backgroundColor: '#F9FAFB',
     borderRadius: 8,
     padding: 12,
-    fontSize: 16,
-    backgroundColor: '#f9f9f9',
-    marginBottom: 16,
     height: 100,
     textAlignVertical: 'top',
   },
-  imageRow: {
-    flexDirection: 'row',
+  uploadButton: {
+    height: 120,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    borderStyle: 'dashed',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+  },
+  uploadText: {
+    color: '#6B7280',
+    marginTop: 8,
   },
   imageContainer: {
+    width: 150,
+    height: 150,
+    marginVertical: 10,
+
     position: 'relative',
-    marginRight: 8,
+    height: 120,
+    borderRadius: 12,
+    overflow: 'hidden',
   },
-  imagePreview: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
+  uploadedImage: {
+    width: '100%',
+    height: '100%',
   },
-  removeImageButton: {
+  removeButton: {
     position: 'absolute',
-    top: 4,
-    right: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 8,
-    padding: 2,
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 16,
+    padding: 4,
   },
-  addImageButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  
   submitButton: {
-    backgroundColor: '#28a745',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    left: 0,
+    right: 0,
+    position: 'relative',
+    backgroundColor: '#2563EB',
+    padding: 16,
     alignItems: 'center',
+    marginBottom: 70, // Adjusted to move the button up
   },
-  submitButtonText: {
-    color: '#fff',
+  submitText: {
+    color: '#FFF',
     fontSize: 16,
+    fontWeight: '600',
   },
 });
+
+export default ReportScreen;
