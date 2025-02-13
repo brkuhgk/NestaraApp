@@ -14,6 +14,9 @@ import {
 import { router } from 'expo-router';
 import Icon from '@expo/vector-icons/Feather';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuthStore } from '@/store/useAuthStore';
+import { authService } from '@/services/api/auth.service';
+
 
 const RegisterScreen = () => {
   const [formData, setFormData] = useState({
@@ -60,17 +63,25 @@ const RegisterScreen = () => {
       setLoading(true);
       console.log('Registration attempt:', formData);
 
-      // Simulate API delay in development
-      if (__DEV__) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
+      const registerData = {
+        email: formData.email.toLowerCase(),
+        password: formData.password,
+        name: formData.name,
+        phone: formData.phone,
+        username: formData.email.split('@')[0], // Generate username from email
+        type: 'norole', // Default role: not joined in any house.
+        bio: formData.bio
+      };
 
-      // TODO: Add your registration API call here
+      console.log('Register screen Registration attempt:', registerData);
+
+      const response = await authService.register(registerData);
+      console.log('Registration response:', response);
 
       // Success - Navigate to orientation
       router.replace('/orientation');
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration error:', error);
       Alert.alert('Error', 'Registration failed. Please try again.');
     } finally {

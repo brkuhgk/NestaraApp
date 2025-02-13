@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,127 +6,168 @@ import {
   ScrollView,
   StyleSheet,
   SafeAreaView,
-  Image,
+  Image,  
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 
+import { useHomeScreen } from '@/hooks/useHomeScreen';
+// import { useTopics } from '@/hooks/useTopics';
+
 const HomeScreen = () => {
+  const { houseData, isLoading: isHouseLoading, getMemberWithRatings, members } = useHomeScreen();
   const [selectedUser, setSelectedUser] = useState(null);
 
-  const tenants = [
-    {
-      id: '1',
-      name: 'John Doe',
-      image: null,
-      isManager: false,
-      ratings: {
-        cleanliness: 850,
-        behavior: 920,
-        payment: 980,
-        maintenance: 760,
-        communication: 890
-      }
-    },
-    {
-      id: '2',
-      name: 'Jane Smith',
-      image: null,
-      isManager: true,
-      ratings: {
-        cleanliness: 900,
-        behavior: 950,
-        payment: 1000,
-        maintenance: 880,
-        communication: 920
-      }
-    }
-  ];
+  // const { 
+  //   activeTopicsCount, 
+  //   isLoading: isTopicsLoading,
+  //   refetch 
+  // } = useTopics({
+  //   enabled: false // Don't load immediately
+    
+  // });
 
-  const RatingModal = ({ visible, tenant, onClose }) => (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={visible}
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <View style={styles.userHeaderInfo}>
-              <Image
-                source={tenant?.image || { uri: 'https://via.placeholder.com/48' }}
-                style={styles.modalAvatar}
-              />
-              <Text style={styles.modalUserName}>{tenant?.name}</Text>
-            </View>
-            <TouchableOpacity onPress={onClose}>
-              <Icon name="x" size={24} color="#4B5563" />
-            </TouchableOpacity>
-          </View>
-          
-          <ScrollView style={styles.ratingsContainer}>
-            {tenant && Object.entries(tenant.ratings).map(([key, value]) => (
-              <View key={key} style={styles.ratingDetail}>
-                <Text style={styles.ratingTitle}>
-                  {key.charAt(0).toUpperCase() + key.slice(1)}
-                </Text>
-                <View style={styles.ratingBarContainer}>
-                  <View style={styles.ratingBarBg}>
-                    <View 
-                      style={[
-                        styles.ratingBarFill, 
-                        { width: `${value/10}%` }
-                      ]} 
-                    />
-                  </View>
-                  <Text style={styles.ratingNumber}>{value}</Text>
-                </View>
+  // Load topics after initial render
+  // useEffect(() => {
+  //   let timer: NodeJS.Timeout;
+  //   if (!isTopicsLoading) {
+  //     timer = setTimeout(() => {
+  //       refetch().catch(error => {
+  //         console.error('Failed to load topics:', error);
+  //       });
+  //     }, 2000);
+  //   }
+  //   return () => clearTimeout(timer);
+  // }, [isTopicsLoading]);
+
+  const isLoading = isHouseLoading;
+
+  // Get active issues count
+  const activeIssuesCount = -1;
+ 
+  // Calculate average house rating
+  const calculateHouseRating = () => {
+    if (!members?.length) return 0;
+    const totalRatings = members.reduce((acc, member) => {
+      const ratings = getMemberWithRatings(member.id)?.ratings;
+      if (!ratings) return acc;
+      const avgRating = Object.values(ratings).reduce((sum, val) => sum + val, 0) / Object.values(ratings).length;
+      return acc + avgRating;
+    }, 0);
+    return Math.round(totalRatings / members.length);
+  };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2563EB" />
+      </SafeAreaView>
+    );
+  }
+
+  const RatingModal = ({ visible, tenant, onClose }) => {
+    if (!tenant) return null;
+  
+    const memberData = getMemberWithRatings(tenant.id);
+    const ratings = memberData?.ratings?.data?.filter(rating => rating.value !== null) || [];
+    // console.log("[Rating Modal] ratings", ratings);
+  
+    return (
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={visible}
+        onRequestClose={onClose}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View style={styles.userHeaderInfo}>
+                <Image
+                  source={memberData?.image_url ? { uri: memberData.image_url } : { uri: 'https://via.placeholder.com/48' }}
+                  style={styles.modalAvatar}
+                />
+                <Text style={styles.modalUserName}>{memberData?.name}</Text>
               </View>
-            ))}
-          </ScrollView>
-        </View>
-      </View>
-    </Modal>
-  );
-
-  const TenantCard = ({ tenant }) => (
-    <TouchableOpacity 
-      style={styles.card}
-      onPress={() => setSelectedUser(tenant)}
-    >
-      <View style={styles.cardHeader}>
-        <Image
-          source={tenant.image || { uri: 'https://via.placeholder.com/48' }}
-          style={styles.avatar}
-        />
-        <View style={styles.userInfo}>
-          <Text style={styles.userName}>{tenant.name}</Text>
-          <View style={styles.badgeContainer}>
-            <View style={[
-              styles.badge,
-              { backgroundColor: tenant.isManager ? '#FEE2E2' : '#D1FAE5' }
-            ]}>
-              <Text style={[
-                styles.badgeText,
-                { color: tenant.isManager ? '#DC2626' : '#059669' }
-              ]}>
-                {tenant.isManager ? 'Manager' : 'Tenant'}
-              </Text>
+              <TouchableOpacity onPress={onClose}>
+                <Icon name="x" size={24} color="#4B5563" />
+              </TouchableOpacity>
             </View>
+            
+            <ScrollView style={styles.ratingsContainer}>
+              {ratings.length > 0 ? (
+                ratings.map((rating) => (
+                  <View key={rating.parameter} style={styles.ratingDetail}>
+                    <Text style={styles.ratingTitle}>
+                      {rating.name}
+                    </Text>
+                    <View style={styles.ratingBarContainer}>
+                      <View style={styles.ratingBarBg}>
+                        <View 
+                          style={[
+                            styles.ratingBarFill, 
+                            { width: `${(rating.value || 0) / 10}%` }
+                          ]} 
+                        />
+                      </View>
+                      <Text style={styles.ratingNumber}>{rating.value || 'N/A'}</Text>
+                    </View>
+                    <Text style={styles.ratingDescription}>{rating.description}</Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.noRatingsText}>No ratings available</Text>
+              )}
+            </ScrollView>
           </View>
         </View>
-        <Icon name="chevron-right" size={24} color="#9CA3AF" />
-      </View>
-    </TouchableOpacity>
-  );
+      </Modal>
+    );
+  };
+  const TenantCard = ({ memberId }) => {
+    const member = getMemberWithRatings(memberId);
+    // console.log("Tenant Card member",member);
+    if (!member) return null;
+
+    return (
+      <TouchableOpacity 
+        style={styles.card}
+        onPress={() => setSelectedUser(member)}
+      >
+        <View style={styles.cardHeader}>
+          <Image
+            source={member.image_url ? { uri: member.image_url } : { uri: 'https://via.placeholder.com/48' }}
+            style={styles.avatar}
+          />
+          <View style={styles.userInfo}>
+            <Text style={styles.userName}>{member.name}</Text>
+            <View style={styles.badgeContainer}>
+              <View style={[
+                styles.badge,
+                { backgroundColor: member.type === 'maintainer' ? '#FEE2E2' : '#D1FAE5' }
+              ]}>
+                <Text style={[
+                  styles.badgeText,
+                  { color: member.type === 'maintainer' ? '#DC2626' : '#059669' }
+                ]}>
+                  {member.type === 'maintainer' ? 'Manager' : 'Tenant'}
+                </Text>
+              </View>
+            </View>
+          </View>
+          <Icon name="chevron-right" size={24} color="#9CA3AF" />
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>Your House</Text>
-          <Text style={styles.subtitle}>123 Main Street</Text>
+          <Text style={styles.title}>{houseData?.name}</Text>
+          <Text style={styles.subtitle}>{houseData?.address}</Text>
         </View>
         <TouchableOpacity style={styles.iconButton}>
           <Icon name="bell" size={24} color="#1F2937" />
@@ -135,23 +176,24 @@ const HomeScreen = () => {
 
       <View style={styles.quickStats}>
         <View style={styles.stat}>
-          <Text style={styles.statValue}>4</Text>
-          <Text style={styles.statLabel}>Tenants</Text>
+          <Text style={styles.statValue}>{members?.length || 0}</Text>
+          <Text style={styles.statLabel}>Members</Text>
         </View>
-        <View style={styles.stat}>
-          <Text style={styles.statValue}>2</Text>
+        {/* <View style={styles.stat}>
+          <Text style={styles.statValue}>{activeIssuesCount}</Text>
           <Text style={styles.statLabel}>Active Issues</Text>
-        </View>
+        </View> */}
         <View style={styles.stat}>
-          <Text style={styles.statValue}>850</Text>
+          <Text style={styles.statValue}>{calculateHouseRating()}</Text>
           <Text style={styles.statLabel}>House Rating</Text>
         </View>
       </View>
 
       <ScrollView style={styles.content}>
-        <Text style={styles.sectionTitle}>Tenants</Text>
-        {tenants.map(tenant => (
-          <TenantCard key={tenant.id} tenant={tenant} />
+        <Text style={styles.sectionTitle}>Members</Text>
+        {members?.map(member => (
+          // console.log("member.user.id",member.user.id),
+          <TenantCard key={member.user.id} memberId={member.user.id} />
         ))}
       </ScrollView>
 
@@ -163,7 +205,6 @@ const HomeScreen = () => {
     </SafeAreaView>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,

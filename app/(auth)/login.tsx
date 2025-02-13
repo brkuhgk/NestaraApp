@@ -11,18 +11,73 @@ import {
   Alert,
 } from 'react-native';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from '@expo/vector-icons/Feather';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '@/app/context/auth';
+import { useAuthStore } from '@/store/useAuthStore';
+
+import api from '@/services/api/client';
+import { authService } from '@/services/api/auth.service';
 
 const LoginScreen = () => {
-  const { login } = useAuth();
 
-  const [identifier, setIdentifier] = useState(__DEV__ ? 'test@example.com' : '');
-  const [password, setPassword] = useState(__DEV__ ? 'password123' : '');
+  const { setUser, setToken } = useAuthStore();
   const [loading, setLoading] = useState(false);
+  const [identifier, setIdentifier] = useState(__DEV__ ? 'test102@example.com' : '');
+  const [password, setPassword] = useState(__DEV__ ? 'test1234' : '');
+
 
   const handleLogin = async () => {
+    try {
+      setLoading(true);
+
+      // Validation
+      if (!identifier || !password) {
+        Alert.alert('Error', 'Please fill in all fields');
+        return;
+      }
+
+      // Make the login request
+      const response = await authService.login({
+        email: identifier.toLowerCase(), // ensure email is lowercase
+        password
+      });
+      
+      // Store token
+      const token = response.token;
+      console.log('login is clicked Stored Token:', token);
+      await AsyncStorage.setItem('auth_token', response.token);
+      await AsyncStorage.setItem('refresh_token', response.refreshToken);
+
+      // Update store
+      setToken(response.token);
+      setUser(response.user);
+
+      //TO-DO: Add orientation phase if user has not joined a house, navigate to house join screen
+      
+      // Navigate to main app
+      router.replace('/(tabs)');
+
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Please check your credentials and try again');
+    } finally{
+      setLoading(false);
+    }
+  };
+
+  const testConnection = async () => {
+    try {
+      const response = await api.get('/health');
+      console.log('API connection test:', response.data);
+      Alert.alert('Success', 'API is accessible');
+    } catch (error) {
+      console.error('API test error:', error);
+      Alert.alert('Error', 'Cannot connect to API');
+    }
+  };
+
+  const handleLoginContext = async () => {
     try {
       setLoading(true);
       
@@ -46,7 +101,7 @@ const LoginScreen = () => {
     router.replace('/(tabs)');
       
     } catch (error) {
-      console.error('Login error:', error);
+      console.log('Login error:', error);
       Alert.alert('Error', 'Login failed. Please try again.');
     } finally {
       setLoading(false);
@@ -118,6 +173,10 @@ const LoginScreen = () => {
             Don't have an account? <Text style={styles.registerLink}>Register</Text>
           </Text>
         </TouchableOpacity>
+        {/* // Add a test button in your UI */}
+    {/* <TouchableOpacity onPress={testConnection}>
+      <Text>Test API Connection</Text>
+        </TouchableOpacity> */}
       </View>
     </KeyboardAvoidingView>
     </SafeAreaView>

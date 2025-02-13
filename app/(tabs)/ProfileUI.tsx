@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { router } from 'expo-router';
 import { useAuth } from '@/app/context/auth';
-
-
+import { useAuthStore } from '@/store/useAuthStore';
+import { useHouseStore } from '@/store/useHouseStore';
+import { Alert } from 'react-native';
 import {
   View,
   Text,
@@ -13,30 +14,59 @@ import {
   SafeAreaView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
+import { useHomeScreen } from '@/hooks/useHomeScreen';
 
 const ProfileScreen = () => {
-
+  const { user } = useAuthStore();
+  const { houseData, isLoading: isHouseLoading, getMemberWithRatings, members } = useHomeScreen();
   const { logout } = useAuth();
   
-  const handleLogout = () => {
-    logout();
-    router.replace('/(auth)/login');
-  };
+  const memberRating = getMemberWithRatings(user?.id);
 
-  const [activeTab, setActiveTab] = useState('overview');
+  // Calculate user ratings based on memberRating data
+  const userRatings = useMemo(() => {
+    if (!memberRating?.ratings?.data) return null;
 
-  const userRatings = {
-    cleanliness: 850,
-    behavior: 920,
-    payment: 980,
-    maintenance: 760,
-    communication: 890
-  };
+    const ratingsData = memberRating.ratings.data;
+    return ratingsData.reduce((acc, rating) => {
+      switch (rating.parameter) {
+        case 'rp1': return { ...acc, cleanliness: rating.value };
+        case 'rp2': return { ...acc, behavior: rating.value };
+        case 'rp3': return { ...acc, payment: rating.value };
+        case 'rp4': return { ...acc, maintenance: rating.value };
+        case 'rp5': return { ...acc, communication: rating.value };
+        case 'mp1': return { ...acc, communication: rating.value };
+        case 'mp2': return { ...acc, behavior: rating.value };
+        case 'mp3': return { ...acc, maintenance: rating.value };
+        default: return acc;
+      }
+    }, {
+      cleanliness: 0,
+      behavior: 0,
+      payment: 0,
+      maintenance: 0,
+      communication: 0
+    });
+  }, [memberRating?.ratings?.data]);
 
-  const RatingBar = ({ label, value }: { label: string; value: number }) => (
+  // Calculate overall rating
+  const overallRating = useMemo(() => {
+    if (!userRatings) return 0;
+    const values = Object.values(userRatings);
+    return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+  }, [userRatings]);
+
+  const RatingBar = ({ label, value, description }: { 
+    label: string; 
+    value: number;
+    description: string;
+  }) => (
     <View style={styles.ratingBar}>
       <View style={styles.ratingHeader}>
-        <Text style={styles.ratingLabel}>{label}</Text>
+        <View>
+          <Text style={styles.ratingLabel}>{label}</Text>
+          <Text style={styles.ratingDescription}>{description}</Text>
+        </View>
         <Text style={styles.ratingValue}>{value}/1000</Text>
       </View>
       <View style={styles.progressBg}>
@@ -45,102 +75,134 @@ const ProfileScreen = () => {
     </View>
   );
 
+  const handleLogout = () => {
+    logout();
+    router.replace('/(auth)/login');
+  };
+
+  if (isHouseLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
   return (
-    <>
     <SafeAreaView style={styles.container}>
-    <ScrollView style={styles.container}>
-      {/* Profile Header */}
-      <View style={styles.header}>
-        <View style={styles.profileImageContainer}>
-          <Image
-            source={{ uri: 'https://placehold.jp/3d4070/ffffff/150x150.png' }}
-            style={styles.profileImage}
-          />
-          <TouchableOpacity style={styles.editButton}>
-            <Icon name="edit-2" size={16} color="#FFF" />
-          </TouchableOpacity>
+      <ScrollView style={styles.container}>
+        {/* Profile Header */}
+        <View style={styles.header}>
+          <View style={styles.profileImageContainer}>
+            <Image
+              source={{ 
+                uri: user?.image_url || 'https://placehold.jp/3d4070/ffffff/150x150.png' 
+              }}
+              style={styles.profileImage}
+            />
+            <TouchableOpacity 
+              style={styles.editButton}
+              onPress={() => router.push('/(modals)/edit-profile')}
+            >
+              <Icon name="edit-2" size={16} color="#FFF" />
+            </TouchableOpacity>
+          </View>
+          
+          <Text style={styles.name}>{user?.name || 'No Name'}</Text>
+          <Text style={styles.bio}>{user?.bio || 'No bio added yet'}</Text>
+          
+          <View style={styles.statsContainer}>
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>{overallRating}</Text>
+              <Text style={styles.statLabel}>Overall Rating</Text>
+            </View>
+            <View style={styles.stat}>
+              <Text style={styles.statValue}>{members?.length || 0}</Text>
+              <Text style={styles.statLabel}>House Members</Text>
+            </View>
+          </View>
         </View>
-        
-        <Text style={styles.name}>John Doe</Text>
-        <Text style={styles.bio}>Friendly roommate | Clean & organized | Early bird </Text>
-        
-        <View style={styles.statsContainer}>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>880</Text>
-            <Text style={styles.statLabel}>Overall Rating</Text>
-          </View>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>12</Text>
-            <Text style={styles.statLabel}>Months</Text>
-          </View>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>4.8</Text>
-            <Text style={styles.statLabel}>Avg. Score</Text>
-          </View>
-        </View>
-      </View>
 
-      {/* Navigation Tabs */}
-      <View style={styles.tabs}>
-        {['Overview', 'History', 'Reviews'].map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={[
-              styles.tab,
-              activeTab === tab.toLowerCase() && styles.activeTab
-            ]}
-            onPress={() => setActiveTab(tab.toLowerCase())}
+        {/* Rating Metrics */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Rating Metrics</Text>
+          {user?.type === 'tenant' ? (
+            <>
+              <RatingBar 
+                label="Cleanliness" 
+                value={userRatings?.cleanliness || 0}
+                description="How well you maintain cleanliness"
+              />
+              <RatingBar 
+                label="Behavior & Cooperation" 
+                value={userRatings?.behavior || 0}
+                description="How well you cooperate with others"
+              />
+              <RatingBar 
+                label="Payment History" 
+                value={userRatings?.payment || 0}
+                description="Timeliness of rent payments"
+              />
+              <RatingBar 
+                label="Maintenance" 
+                value={userRatings?.maintenance || 0}
+                description="How well you maintain and report issues"
+              />
+              <RatingBar 
+                label="Communication" 
+                value={userRatings?.communication || 0}
+                description="Quality of communication with others"
+              />
+            </>
+          ) : (
+            <>
+              <RatingBar 
+                label="Communication" 
+                value={userRatings?.communication || 0}
+                description="Quality of communication with tenants"
+              />
+              <RatingBar 
+                label="Behavior" 
+                value={userRatings?.behavior || 0}
+                description="How well you cooperate"
+              />
+              <RatingBar 
+                label="Maintenance" 
+                value={userRatings?.maintenance || 0}
+                description="Speed and quality of maintenance work"
+              />
+            </>
+          )}
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.quickActions}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => router.push('/(modals)/settings')}
           >
-            <Text style={[
-              styles.tabText,
-              activeTab === tab.toLowerCase() && styles.activeTabText
-            ]}>
-              {tab}
-            </Text>
+            <Icon name="settings" size={24} color="#4B5563" />
+            <Text style={styles.actionText}>Settings</Text>
           </TouchableOpacity>
-        ))}
-      </View>
 
-      {/* Rating Metrics */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Rating Metrics</Text>
-        <RatingBar label="Cleanliness" value={userRatings.cleanliness} />
-        <RatingBar label="Behavior & Cooperation" value={userRatings.behavior} />
-        <RatingBar label="Payment History" value={userRatings.payment} />
-        <RatingBar label="Maintenance" value={userRatings.maintenance} />
-        <RatingBar label="Communication" value={userRatings.communication} />
-      </View>
-
-      {/* Quick Actions */}
-      <View style={styles.quickActions}>
-
-        <TouchableOpacity 
-        style={styles.actionButton}
-        onPress={() => router.push('/(modals)/settings')}
-        >
-          <Icon name="settings" size={24} color="#4B5563" />
-          <Text style={styles.actionText}>Settings</Text>
-        </TouchableOpacity>
-
-
-        <TouchableOpacity style={styles.actionButton}
-        onPress={() => router.push('/(modals)/help')}
-        >
-          <Icon name="help-circle" size={24} color="#4B5563" />
-          <Text style={styles.actionText}>Help</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={[styles.actionButton, styles.logoutButton]}
-        onPress={handleLogout}
-        >
-          <Icon name="log-out" size={24} color="#DC2626" />
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => router.push('/(modals)/help')}
+          >
+            <Icon name="help-circle" size={24} color="#4B5563" />
+            <Text style={styles.actionText}>Help</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.logoutButton]}
+            onPress={handleLogout}
+          >
+            <Icon name="log-out" size={24} color="#DC2626" />
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     </SafeAreaView>
-    </>
-    
   );
 };
 
@@ -285,6 +347,16 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     fontSize: 16,
     color: '#DC2626',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  ratingDescription: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
   },
 });
 
