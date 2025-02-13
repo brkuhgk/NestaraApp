@@ -483,7 +483,7 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: 32,
+    bottom: 100,
     right: 16,
     backgroundColor: '#2563EB',
     width: 56,
