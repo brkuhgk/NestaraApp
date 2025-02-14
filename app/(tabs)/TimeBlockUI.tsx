@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,9 +7,13 @@ import {
   ScrollView,
   Modal,
   FlatList,
+  Alert,
 } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useHomeScreen } from '@/hooks/useHomeScreen';
+import { useAuthStore } from '@/store/useAuthStore';
+import { TimeBlock, timeBlockService } from '@/services/api/timeBlock.service';
 
 interface ScheduleBlock {
   startTime: string;
@@ -23,6 +27,156 @@ interface ScheduleData {
     [location: string]: ScheduleBlock[];
   };
 }
+
+interface TimeBlockData {
+  house_id: string;
+  location: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  user_id: string;
+}
+
+interface User {
+  id: string;
+  houseId: string;
+}
+
+interface TimeBlockSubmitResponse {
+  // Add response type based on your API
+  success: boolean;
+  message?: string;
+}
+
+interface ScheduleBlock {
+  startTime: string;
+  endTime: string;
+  user: string;
+  color: string;
+}
+
+interface TimeBlockModalProps {
+  isVisible: boolean;
+  onClose: () => void;
+  selectedLocation: string;
+  selectedDate: Date;
+  startTime: Date;
+  endTime: Date;
+  setStartTime: (date: Date) => void;
+  setEndTime: (date: Date) => void;
+  onSubmit: () => void;
+  isStartTimePickerVisible: boolean;
+  isEndTimePickerVisible: boolean;
+  setStartTimePickerVisible: (visible: boolean) => void;
+  setEndTimePickerVisible: (visible: boolean) => void;
+}
+
+const TimeBlockModal: React.FC<TimeBlockModalProps> = ({
+  isVisible,
+  onClose,
+  selectedLocation,
+  selectedDate,
+  startTime,
+  endTime,
+  setStartTime,
+  setEndTime,
+  onSubmit,
+  isStartTimePickerVisible,
+  isEndTimePickerVisible,
+  setStartTimePickerVisible,
+  setEndTimePickerVisible,
+}) => {
+  return (
+    <Modal
+      visible={isVisible}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Block Time</Text>
+          
+          {/* Location Display */}
+          <View style={styles.modalSection}>
+            <Text style={styles.modalLabel}>Location</Text>
+            <Text style={styles.modalValue}>{selectedLocation}</Text>
+          </View>
+
+          {/* Date Display */}
+          <View style={styles.modalSection}>
+            <Text style={styles.modalLabel}>Date</Text>
+            <Text style={styles.modalValue}>{selectedDate.toDateString()}</Text>
+          </View>
+
+          {/* Time Selection */}
+          <View style={styles.modalSection}>
+            <Text style={styles.modalLabel}>Time Range</Text>
+            <View style={styles.timeSelectionContainer}>
+              <TouchableOpacity 
+                style={styles.timeSelectButton}
+                onPress={() => setStartTimePickerVisible(true)}
+              >
+                <Text style={styles.timeSelectText}>
+                  {startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </Text>
+              </TouchableOpacity>
+              
+              <Text style={styles.timeSelectText}>to</Text>
+              
+              <TouchableOpacity 
+                style={styles.timeSelectButton}
+                onPress={() => setEndTimePickerVisible(true)}
+              >
+                <Text style={styles.timeSelectText}>
+                  {endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Time Pickers */}
+          <DateTimePickerModal
+            isVisible={isStartTimePickerVisible}
+            mode="time"
+            onConfirm={(time) => {
+              setStartTime(time);
+              setStartTimePickerVisible(false);
+            }}
+            onCancel={() => setStartTimePickerVisible(false)}
+          />
+
+          <DateTimePickerModal
+            isVisible={isEndTimePickerVisible}
+            mode="time"
+            onConfirm={(time) => {
+              setEndTime(time);
+              setEndTimePickerVisible(false);
+            }}
+            onCancel={() => setEndTimePickerVisible(false)}
+          />
+
+          {/* Action Buttons */}
+          <View style={styles.modalActions}>
+            <TouchableOpacity 
+              style={[styles.modalButton, styles.modalCancelButton]}
+              onPress={onClose}
+            >
+              <Text style={styles.modalButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.modalButton, styles.modalConfirmButton]}
+              onPress={onSubmit}
+            >
+              <Text style={styles.modalButtonText}>Block Time</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
 
 const scheduleData: ScheduleData = {
   '2023-01-01': {
@@ -58,11 +212,142 @@ const scheduleData: ScheduleData = {
 const locations = ['Kitchen', 'Washroom', 'Hall'];
 
 export default function TimeBlockUI() {
+
+  const { user } = useAuthStore();
+  const { members, isLoading: isHouseLoading } = useHomeScreen();
+  const houseId = members?.[0]?.user.house_id; // Get house_id from first member
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [selectedLocation, setSelectedLocation] = useState('Kitchen');
   const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isLocationModalVisible, setLocationModalVisibility] = useState(false);
 
+  // New state for time block modal
+  const [isTimeBlockModalVisible, setTimeBlockModalVisible] = useState(false);
+  const [startTime, setStartTime] = useState(new Date());
+  const [endTime, setEndTime] = useState(new Date());
+  const [isStartTimePickerVisible, setStartTimePickerVisible] = useState(false);
+  const [isEndTimePickerVisible, setEndTimePickerVisible] = useState(false);
+
+  // Validation functions
+  const validateTimeBlock = (): boolean => {
+    if (endTime <= startTime) {
+      Alert.alert('Error', 'End time must be after start time');
+      return false;
+    }
+
+    const dateKey = formatDate(selectedDate);
+    const schedule = scheduleData[dateKey]?.[selectedLocation] || [];
+    
+    const newBlockStart = timeToPosition(startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    const newBlockEnd = timeToPosition(endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    
+    const hasOverlap = schedule.some(block => {
+      const blockStart = timeToPosition(block.startTime);
+      const blockEnd = timeToPosition(block.endTime);
+      return (newBlockStart < blockEnd && newBlockEnd > blockStart);
+    });
+
+    if (hasOverlap) {
+      Alert.alert('Error', 'Time block overlaps with existing block');
+      return false;
+    }
+    return true;
+  };
+
+  // Handler for submitting time block
+  const handleTimeBlockSubmit = async () => {
+    try {
+      if (!validateTimeBlock()) {
+        return;
+      }
+      if (!houseId) {
+        Alert.alert('Error', 'House ID not found');
+        return;
+      }
+      setIsSubmitting(true);
+        
+
+      const timeBlockData: TimeBlockData = {
+        house_id: houseId,
+        user_id: user?.id || '',
+        location: selectedLocation,
+        date: formatDate(selectedDate),
+        start_time: startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+        end_time: endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+        
+      };
+
+      const response = await timeBlockService.createTimeBlock(timeBlockData);
+      
+      setTimeBlockModalVisible(false);
+      Alert.alert('Success', 'Time block created successfully');
+      //Refresh the time blocks
+      fetchTimeBlocks();
+      
+      Alert.alert('Success', 'Time block created successfully');
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to create time block');
+    }finally {
+      setIsSubmitting(false);
+    }
+  };
+  const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
+const [isLoadingBlocks, setIsLoadingBlocks] = useState(false);
+
+const fetchTimeBlocks = async () => {
+  if (!houseId) return;
+  
+  try {
+    setIsLoadingBlocks(true);
+    const date = formatDate(selectedDate);
+    const blocks = await timeBlockService.getTimeBlocks(houseId, date);
+    
+    // Convert blocks to schedule format
+    const formattedBlocks = blocks.map(block => ({
+      startTime: formatTimeForDisplay(block.start_time),
+      endTime: formatTimeForDisplay(block.end_time),
+      user: block.user?.name || 'Unknown',
+      color: getRandomColor(block.user_id), // Implement color generation based on user
+      id: block.id
+    }));
+
+    setTimeBlocks(formattedBlocks);
+  } catch (error) {
+    console.error('Error fetching time blocks:', error);
+    Alert.alert('Error', 'Failed to load time blocks');
+  } finally {
+    setIsLoadingBlocks(false);
+  }
+};
+
+// Helper function to format time for display
+const formatTimeForDisplay = (time: string) => {
+  const [hours, minutes] = time.split(':');
+  const hour = parseInt(hours);
+  const ampm = hour >= 12 ? 'pm' : 'am';
+  const displayHour = hour % 12 || 12;
+  return `${displayHour}${ampm}`;
+};
+
+// Helper function to generate consistent colors for users
+const getRandomColor = (userId: string) => {
+  const colors = [
+    '#A3E4D7', '#AED6F1', '#F5B7B1', '#F9E79F', 
+    '#D2B4DE', '#F1948A', '#85C1E9', '#82E0AA'
+  ];
+  const index = userId.split('').reduce((acc, char) => 
+    acc + char.charCodeAt(0), 0) % colors.length;
+  return colors[index];
+};
+
+// Add useEffect to fetch time blocks when date or location changes
+useEffect(() => {
+  fetchTimeBlocks();
+}, [selectedDate, houseId]);
+  
 const handleLocationChange = (location: string): void => {
     console.log('Location changed to:', location);
     setSelectedLocation(location);
@@ -149,11 +434,29 @@ const timeToPosition: TimeToPosition = (time) => {
 
     <SafeAreaView style={styles.container}>
     <View style={styles.container}>
+
+      
       {/* Location Selection Button */}
       <TouchableOpacity onPress={showLocationModal} style={styles.locationButton}>
         <Text style={styles.locationButtonText}>{selectedLocation}</Text>
       </TouchableOpacity>
-
+    {/* Add TimeBlock Modal */}
+    <TimeBlockModal 
+          isVisible={isTimeBlockModalVisible}
+          onClose={() => setTimeBlockModalVisible(false)}
+          selectedLocation={selectedLocation}
+          selectedDate={selectedDate}
+          startTime={startTime}
+          endTime={endTime}
+          setStartTime={setStartTime}
+          setEndTime={setEndTime}
+          onSubmit={handleTimeBlockSubmit}
+          isStartTimePickerVisible={isStartTimePickerVisible}
+          isEndTimePickerVisible={isEndTimePickerVisible}
+          setStartTimePickerVisible={setStartTimePickerVisible}
+          setEndTimePickerVisible={setEndTimePickerVisible}
+        />
+        
       {/* Location Selection Modal */}
       <Modal
         visible={isLocationModalVisible}
@@ -210,11 +513,15 @@ const timeToPosition: TimeToPosition = (time) => {
         ))}
         {renderTimeBlocks()}
       </ScrollView>
-
-      {/* Block Time Button */}
-      <TouchableOpacity style={styles.blockButton}>
-        <Text style={styles.blockButtonText}>Block Time</Text>
-      </TouchableOpacity>
+        
+      {/* Update Block Time Button */}
+      <TouchableOpacity 
+          style={styles.blockButton}
+          onPress={() => setTimeBlockModalVisible(true)}
+        >
+          <Text style={styles.blockButtonText}>Block Time</Text>
+        </TouchableOpacity>
+      
     </View>
     </SafeAreaView>
   );
@@ -334,4 +641,68 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
+    // New styles for TimeBlock Modal
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: '600',
+      marginBottom: 20,
+      color: '#1F2937',
+    },
+    modalSection: {
+      marginBottom: 20,
+      width: '100%',
+    },
+    modalLabel: {
+      fontSize: 14,
+      color: '#6B7280',
+      marginBottom: 8,
+    },
+    modalValue: {
+      fontSize: 16,
+      color: '#1F2937',
+      padding: 12,
+      backgroundColor: '#F3F4F6',
+      borderRadius: 8,
+    },
+    timeSelectionContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    timeSelectButton: {
+      flex: 1,
+      padding: 12,
+      backgroundColor: '#F3F4F6',
+      borderRadius: 8,
+      alignItems: 'center',
+    },
+    timeSelectText: {
+      fontSize: 16,
+      color: '#1F2937',
+      paddingHorizontal: 12,
+    },
+    modalActions: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      width: '100%',
+      marginTop: 20,
+    },
+    modalButton: {
+      flex: 1,
+      padding: 12,
+      borderRadius: 8,
+      alignItems: 'center',
+      marginHorizontal: 8,
+    },
+    modalCancelButton: {
+      backgroundColor: '#EF4444',
+    },
+    modalConfirmButton: {
+      backgroundColor: '#2563EB',
+    },
+    modalButtonText: {
+      color: '#FFF',
+      fontSize: 16,
+      fontWeight: '600',
+    },
 });
