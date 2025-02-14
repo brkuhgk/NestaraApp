@@ -15,6 +15,9 @@ import Icon from 'react-native-vector-icons/Feather';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { useHomeScreen } from '@/hooks/useHomeScreen';
 import { useAuthStore } from '@/store/useAuthStore';
+import { topicService } from '@/services/api/topic.service';
+import { router } from 'expo-router';
+import { create } from 'zustand';
 
 const ReportScreen = () => {
   const { user } = useAuthStore();
@@ -24,7 +27,7 @@ const ReportScreen = () => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedType, setSelectedType] = useState('');
   const [image, setImage] = useState(null);
-  const [selectedTenants, setSelectedTenants] = useState([]);
+  const [selectedTenants, setSelectedTenants] = useState<string[]>([]);
   const [isAnonymous, setIsAnonymous] = useState(false);
 
   // Filter out current user and get only tenants
@@ -46,12 +49,13 @@ const ReportScreen = () => {
     { id: 'general', label: 'General', color: '#2563EB' },
   ];
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    try{
     if (!selectedType) {
       Alert.alert('Error', 'Please select a report type');
       return;
     }
-    if (!selectedCategory) {
+    if (!selectedCategory && selectedType !== 'general') {
       Alert.alert('Error', 'Please select a category');
       return;
     }
@@ -59,19 +63,65 @@ const ReportScreen = () => {
       Alert.alert('Error', 'Please enter a description');
       return;
     }
-    if (selectedType !== 'general' && !isAnonymous && selectedTenants.length === 0) {
+    if (selectedType !== 'general' && selectedTenants.length === 0) {
       Alert.alert('Error', 'Please select tenants or choose anonymous submission');
       return;
     }
+    // Get house_id from the first member (since all members belong to same house)
+    // console.log('Members: ==============', members);
+    const house_id = members?.[0]?.user.house_id;
+    if (!house_id) {
+      Alert.alert('Error', 'House ID not found');
+      return;
+    }
+      // Determine created_by and created_for based on topic type
+      let created_by = user?.id;  // Default to current user
+      let created_for = [user?.id];  // Default to current user for general topics
+  
+      if (selectedType !== 'general') {
+        // For conflict/mentions topics
+        created_by = isAnonymous ? undefined : user?.id;
+        created_for = selectedTenants;
+      }
 
     console.log({
       type: selectedType,
       category: selectedCategory,
+      house_id,
       description,
       image,
+      created_by: isAnonymous? null : user?.id,
       created_for: selectedTenants,
-      isAnonymous
     });
+
+    // Prepare form data
+    const formData = {
+      house_id,
+      type: selectedType,
+      description,
+      rating_parameter: selectedCategory,
+      created_by: isAnonymous ? null : user?.id, // Set to null if anonymous
+      created_for: selectedTenants,
+      images: image ? [image] : []
+    };
+
+    console.log('Submitting form:', formData);
+    
+    // Call your API here
+    const response = await topicService.createTopic(formData);
+    
+    // Show success message and navigate back
+    Alert.alert(
+      'Success',
+      'Report submitted successfully',
+      [{ text: 'OK', onPress: () => router.back() }]
+    );
+
+  } catch (error) {
+    console.error('Error submitting report:', error);
+    Alert.alert('Error', (error as any).message || 'Failed to submit report');
+  }
+  
   };
 
   const handleImagePick = () => {
@@ -180,9 +230,101 @@ const ReportScreen = () => {
             ))}
           </ScrollView>
         </View>
+        {selectedType !== 'general' && (
+  <View style={styles.section}>
+    <Text style={styles.sectionTitle}>Select Tenants</Text>
+    
+    {/* Selected Tenants Chips */}
+    <View style={styles.chipContainer}>
+      {selectedTenants.map(tenantId => {
+        const tenant = availableTenants.find(t => t.id === tenantId);
+        if (!tenant) return null;
+        
+        return (
+          <View key={tenant.id} style={styles.chip}>
+            <Image
+              source={
+                tenant.image_url
+                  ? { uri: tenant.image_url }
+                  : { uri: 'https://via.placeholder.com/24' }
+              }
+              style={styles.chipImage}
+            />
+            <Text style={styles.chipText} numberOfLines={1}>
+              {tenant.name}
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                setSelectedTenants(prev => 
+                  prev.filter(id => id !== tenant.id)
+                );
+              }}
+              style={styles.chipRemove}
+            >
+              <Icon name="x" size={16} color="#4B5563" />
+            </TouchableOpacity>
+          </View>
+        );
+      })}
+    </View>
+
+    {/* Tenant Selection Dropdown/Modal Trigger */}
+    <TouchableOpacity
+      style={styles.selectTenantsButton}
+      onPress={() => {
+        // Show dropdown or modal for tenant selection
+        Alert.alert(
+          'Select Tenants',
+          '',
+          availableTenants.map(tenant => ({
+            text: tenant.name,
+            onPress: () => {
+              setSelectedTenants(prev => {
+                if (prev.includes(tenant.id)) {
+                  return prev.filter(id => id !== tenant.id);
+                }
+                return [...prev, tenant.id];
+              });
+              if (isAnonymous) setIsAnonymous(false);
+            },
+            style: selectedTenants.includes(tenant.id) ? 'destructive' : 'default' as 'destructive' | 'default'
+          })).concat([
+            { text: 'Cancel', onPress: () => {}, style: 'cancel' as 'cancel' }
+          ])
+        );
+      }}
+    >
+      <Icon name="users" size={20} color="#6B7280" />
+      <Text style={styles.selectTenantsText}>
+        {selectedTenants.length ? 'Add more tenants' : 'Select tenants'}
+      </Text>
+    </TouchableOpacity>
+
+    {/* Anonymous Option */}
+    <TouchableOpacity
+      style={styles.anonymousButton}
+      onPress={() => {
+        setIsAnonymous(!isAnonymous);
+        // if (!isAnonymous) setSelectedTenants([]);
+      }}
+    >
+      <Icon
+        name={isAnonymous ? "check-square" : "square"}
+        size={24}
+        color={isAnonymous ? "#2563EB" : "#D1D5DB"}
+      />
+      <Text style={[
+        styles.anonymousText,
+        isAnonymous && styles.anonymousTextSelected
+      ]}>
+        Submit Anonymously
+      </Text>
+    </TouchableOpacity>
+  </View>
+)}
 
         {/* Tenant Selection - Only show for conflict/mentions */}
-        {selectedType !== 'general' && (
+        {/* {selectedType !== 'general' && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Select Tenants</Text>
             <ScrollView style={styles.tenantList}>
@@ -242,7 +384,7 @@ const ReportScreen = () => {
               </Text>
             </TouchableOpacity>
           </View>
-        )}
+        )} */}
 
         {/* Description Input */}
         <View style={styles.section}>
@@ -379,6 +521,51 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 8,
   },
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 16,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    marginBottom: 4,
+  },
+  chipImage: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    marginRight: 4,
+  },
+  chipText: {
+    fontSize: 14,
+    color: '#2563EB',
+    marginRight: 4,
+    maxWidth: 100, // Limit text width
+  },
+  chipRemove: {
+    padding: 2,
+  },
+  selectTenantsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 12,
+  },
+  selectTenantsText: {
+    marginLeft: 8,
+    fontSize: 16,
+    color: '#6B7280',
+  },
   typeButton: {
     flex: 1,
     paddingVertical: 8,
@@ -469,6 +656,52 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  
+  chipContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 16,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    marginBottom: 4,
+  },
+  chipImage: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    marginRight: 4,
+  },
+  chipText: {
+    fontSize: 14,
+    color: '#2563EB',
+    marginRight: 4,
+    maxWidth: 100, // Limit text width
+  },
+  chipRemove: {
+    padding: 2,
+  },
+  selectTenantsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 12,
+  },
+  selectTenantsText: {
+    marginLeft: 8,
+    fontSize: 16,
+    color: '#6B7280',
   },
 });
 
