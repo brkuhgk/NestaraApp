@@ -9,26 +9,35 @@ import {
   ScrollView,
   SafeAreaView,
   Alert,
-  PermissionsAndroid, Platform
+  ActivityIndicator
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import { useHomeScreen } from '@/hooks/useHomeScreen';
+import { useAuthStore } from '@/store/useAuthStore';
+
 const ReportScreen = () => {
+  const { user } = useAuthStore();
+  const { members, isLoading } = useHomeScreen();
+  
   const [description, setDescription] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedType, setSelectedType] = useState('');
   const [image, setImage] = useState(null);
-  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedTenants, setSelectedTenants] = useState([]);
   const [isAnonymous, setIsAnonymous] = useState(false);
 
-
+  // Filter out current user and get only tenants
+  const availableTenants = members
+    ?.filter(member => member.user.id !== user?.id && member.user.type === 'tenant')
+    .map(member => member.user) || [];
 
   const categories = [
-    { id: 'cleanliness', label: 'Cleanliness' },
-    { id: 'behavior', label: 'Behavior & Cooperation' },
-    { id: 'payment', label: 'Payment History' },
-    { id: 'maintenance', label: 'Maintenance' },
-    { id: 'communication', label: 'Communication' },
+    { id: 'rp1', label: 'Cleanliness' },
+    { id: 'rp2', label: 'Behavior & Cooperation' },
+    { id: 'rp3', label: 'Payment History' },
+    { id: 'rp4', label: 'Maintenance' },
+    { id: 'rp5', label: 'Communication' },
   ];
 
   const types = [
@@ -36,7 +45,8 @@ const ReportScreen = () => {
     { id: 'mentions', label: 'Mentions', color: '#059669' },
     { id: 'general', label: 'General', color: '#2563EB' },
   ];
-const handleSubmit = () => {
+
+  const handleSubmit = () => {
     if (!selectedType) {
       Alert.alert('Error', 'Please select a report type');
       return;
@@ -49,8 +59,8 @@ const handleSubmit = () => {
       Alert.alert('Error', 'Please enter a description');
       return;
     }
-    if (!selectedUser && !isAnonymous) {
-      Alert.alert('Error', 'Please select a user or choose to remain anonymous');
+    if (selectedType !== 'general' && !isAnonymous && selectedTenants.length === 0) {
+      Alert.alert('Error', 'Please select tenants or choose anonymous submission');
       return;
     }
 
@@ -59,56 +69,58 @@ const handleSubmit = () => {
       category: selectedCategory,
       description,
       image,
-      reportedUser: selectedUser,
+      created_for: selectedTenants,
       isAnonymous
     });
   };
 
-// In your handleImagePick function
-const handleImagePick = () => {
-  const options = {
-    mediaType: 'photo',
-    maxWidth: 300,
-    maxHeight: 300,
-    quality: 1,
+  const handleImagePick = () => {
+    const options = {
+      mediaType: 'photo',
+      maxWidth: 300,
+      maxHeight: 300,
+      quality: 1,
+    };
+
+    Alert.alert(
+      'Select Photo',
+      'Choose an option',
+      [
+        {
+          text: 'Take Photo',
+          onPress: () => {
+            launchCamera(options, response => {
+              if (!response.didCancel && !response.error) {
+                setImage(response.assets[0].uri);
+              }
+            });
+          },
+        },
+        {
+          text: 'Choose from Gallery',
+          onPress: () => {
+            launchImageLibrary(options, response => {
+              if (!response.didCancel && !response.error) {
+                setImage(response.assets[0].uri);
+              }
+            });
+          },
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ],
+    );
   };
 
-  Alert.alert(
-    'Select Photo',
-    'Choose an option',
-    [
-      {
-        text: 'Take Photo',
-        onPress: () => {
-          launchCamera(options, response => {
-            if (!response.didCancel && !response.error) {
-              setImage(response.assets[0].uri);
-            }
-          });
-        },
-      },
-      {
-        text: 'Choose from Gallery',
-        onPress: () => {
-          launchImageLibrary(options, response => {
-            if (!response.didCancel && !response.error) {
-              setImage(response.assets[0].uri);
-            }
-          });
-        },
-      },
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-    ],
-  );
-};
-
-
-
-
-
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2563EB" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -169,6 +181,69 @@ const handleImagePick = () => {
           </ScrollView>
         </View>
 
+        {/* Tenant Selection - Only show for conflict/mentions */}
+        {selectedType !== 'general' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Select Tenants</Text>
+            <ScrollView style={styles.tenantList}>
+              {availableTenants.map((tenant) => (
+                <TouchableOpacity
+                  key={tenant.id}
+                  style={[
+                    styles.tenantItem,
+                    selectedTenants.includes(tenant.id) && styles.selectedTenantItem
+                  ]}
+                  onPress={() => {
+                    setSelectedTenants(prev => {
+                      if (prev.includes(tenant.id)) {
+                        return prev.filter(id => id !== tenant.id);
+                      }
+                      return [...prev, tenant.id];
+                    });
+                    if (isAnonymous) setIsAnonymous(false);
+                  }}
+                >
+                  <View style={styles.tenantInfo}>
+                    <Image
+                      source={
+                        tenant.image_url
+                          ? { uri: tenant.image_url }
+                          : { uri: 'https://via.placeholder.com/40' }
+                      }
+                      style={styles.tenantImage}
+                    />
+                    <Text style={styles.tenantName}>{tenant.name}</Text>
+                  </View>
+                  <Icon
+                    name={selectedTenants.includes(tenant.id) ? "check-circle" : "circle"}
+                    size={24}
+                    color={selectedTenants.includes(tenant.id) ? "#2563EB" : "#D1D5DB"}
+                  />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <TouchableOpacity
+              style={styles.anonymousButton}
+              onPress={() => {
+                setIsAnonymous(!isAnonymous);
+                if (!isAnonymous) setSelectedTenants([]);
+              }}
+            >
+              <Icon
+                name={isAnonymous ? "check-square" : "square"}
+                size={24}
+                color={isAnonymous ? "#2563EB" : "#D1D5DB"}
+              />
+              <Text style={[
+                styles.anonymousText,
+                isAnonymous && styles.anonymousTextSelected
+              ]}>
+                Submit Anonymously
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Description Input */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Description</Text>
@@ -181,8 +256,6 @@ const handleImagePick = () => {
             onChangeText={setDescription}
           />
         </View>
-        
-       
 
         {/* Image Upload */}
         <View style={styles.section}>
@@ -209,23 +282,77 @@ const handleImagePick = () => {
         </View>
       </ScrollView>
 
-      <TouchableOpacity style={styles.submitButton}>
+      <TouchableOpacity 
+        style={styles.submitButton}
+        onPress={handleSubmit}
+      >
         <Text style={styles.submitText}>Submit Report</Text>
       </TouchableOpacity>
-    
-
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  // ... existing styles ...
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+  },
+  tenantList: {
+    maxHeight: 200,
+  },
+  tenantItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#F9FAFB',
+    marginBottom: 8,
+  },
+  selectedTenantItem: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#2563EB',
+    borderWidth: 1,
+  },
+  tenantInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  tenantImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 12,
+  },
+  tenantName: {
+    fontSize: 16,
+    color: '#1F2937',
+  },
+  anonymousButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    marginTop: 8,
+  },
+  anonymousText: {
+    marginLeft: 8,
+    fontSize: 16,
+    color: '#4B5563',
+  },
+  anonymousTextSelected: {
+    color: '#2563EB',
+  },
   container: {
     flex: 1,
     backgroundColor: '#F3F4F6',
   },
   scrollView: {
     flex: 1,
-    marginBottom: 20, // Adjusted to move the button up
+    marginBottom: 20,
   },
   header: {
     padding: 16,
@@ -312,7 +439,6 @@ const styles = StyleSheet.create({
     width: 150,
     height: 150,
     marginVertical: 10,
-
     position: 'relative',
     height: 120,
     borderRadius: 12,
@@ -330,7 +456,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 4,
   },
-  
   submitButton: {
     left: 0,
     right: 0,
@@ -338,7 +463,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#2563EB',
     padding: 16,
     alignItems: 'center',
-    marginBottom: 70, // Adjusted to move the button up
+    marginBottom: 70,
   },
   submitText: {
     color: '#FFF',
