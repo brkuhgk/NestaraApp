@@ -46,15 +46,20 @@ const HomeScreen = () => {
   // Get active issues count
   const activeIssuesCount = -1;
  
-  // Calculate average house rating
+  // Calculate house rating
   const calculateHouseRating = () => {
     if (!members?.length) return 0;
+  
     const totalRatings = members.reduce((acc, member) => {
-      const ratings = getMemberWithRatings(member.id)?.ratings;
+      const memberData = getMemberWithRatings(member.user.id);
+      const ratings = memberData?.ratings?.data;
+  
       if (!ratings) return acc;
-      const avgRating = Object.values(ratings).reduce((sum, val) => sum + val, 0) / Object.values(ratings).length;
+  
+      const avgRating = ratings.reduce((sum, rating) => sum + rating.value, 0) / ratings.length;
       return acc + avgRating;
     }, 0);
+  
     return Math.round(totalRatings / members.length);
   };
 
