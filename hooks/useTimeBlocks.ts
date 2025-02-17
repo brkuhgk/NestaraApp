@@ -27,7 +27,7 @@ export const useTimeBlocks = (houseId: string, date: string) => {
         
         // Ensure we always return an array
         const blocks = Array.isArray(response) ? response : [];
-        console.log('[useTimeBlocks] Fetched blocks:', blocks);
+        console.log('[useTimeBlocks] Fetched blocks:', blocks.length);
         return blocks;
       } catch (error) {
         console.error('[useTimeBlocks] Error fetching blocks:', error);
