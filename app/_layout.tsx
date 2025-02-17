@@ -29,7 +29,7 @@ function RootLayoutNav() {
 //  }, [isAuthenticated, hasJoinedHouse, segments]);
 
  const { token } = useAuthStore();
-console.log("===================Token =======================",token);
+// console.log("===================Token =======================",token);
 
 useEffect(() => {
 if (token === null) {
