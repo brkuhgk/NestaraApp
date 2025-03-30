@@ -7,30 +7,42 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 import { AuthProvider, useAuth } from '@/app/context/auth';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useAuthStore } from '@/store/useAuthStore';
 
 SplashScreen.preventAutoHideAsync();
 
 function RootLayoutNav() {
- const { isAuthenticated, hasJoinedHouse } = useAuth();
  const segments = useSegments();
  const router = useRouter();
 
- useEffect(() => {
-   const inAuthGroup = segments[0] === '(auth)';
+//  useEffect(() => {
+//    const inAuthGroup = segments[0] === '(auth)';
    
-   if (!isAuthenticated && !inAuthGroup) {
-     router.replace('/(auth)/login');
-   } else if (isAuthenticated && !hasJoinedHouse && segments[0] !== 'orientation') {
-     router.replace('/orientation');
-   } else if (isAuthenticated && hasJoinedHouse && inAuthGroup) {
-     router.replace('/(tabs)');
-   }
- }, [isAuthenticated, hasJoinedHouse, segments]);
+//    if (!isAuthenticated && !inAuthGroup) {
+//      router.replace('/(auth)/login');
+//    } else if (isAuthenticated && !hasJoinedHouse && segments[0] !== 'orientation') {
+//      router.replace('/orientation');
+//    } else if (isAuthenticated && hasJoinedHouse && inAuthGroup) {
+//      router.replace('/(tabs)');
+//    }
+//  }, [isAuthenticated, hasJoinedHouse, segments]);
+
+ const { token } = useAuthStore();
+// console.log("===================Token =======================",token);
+
+useEffect(() => {
+if (token === null) {
+  router.replace('/(auth)/login');
+}else{
+  router.replace('/(tabs)');
+}
+}, [token]);  
 
  return (
-   <Stack>
-     <Stack.Screen name="(auth)/login" options={{ headerShown: false, title: '',presentation: 'containedModal'}} />
-     <Stack.Screen name="(auth)/register" options={{ headerShown: false }} />
+   
+     <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
 
      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
      <Stack.Screen name="orientation" options={{ headerShown: false }} />
@@ -44,6 +56,7 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
+ const queryClient = new QueryClient();
  const colorScheme = useColorScheme();
  const [loaded] = useFonts({
    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
@@ -58,11 +71,13 @@ export default function RootLayout() {
  if (!loaded) return null;
 
  return (
+  <QueryClientProvider client={queryClient}>
    <AuthProvider>
      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
        <RootLayoutNav />
        <StatusBar style="auto" />
      </ThemeProvider>
    </AuthProvider>
+  </QueryClientProvider>
  );
 }

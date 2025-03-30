@@ -1,126 +1,306 @@
+// ConflictsScreen.tsx
 import React from 'react';
-import { View, Text, TouchableOpacity, FlatList, SafeAreaView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, SafeAreaView, StyleSheet, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
+import { useTopics } from '@/hooks/useTopics';
+import { useTopicVoting } from '@/hooks/useTopicVoting';
 
 
+interface TopicVote {
+  count: number;
+}
 
+interface TopicCreator {
+  id: string;
+  name: string;
+}
+
+interface Topic {
+  id: string;
+  house_id: string;
+  created_by: TopicCreator;
+  created_for: string[];
+  type: 'general' | 'conflict' | 'mentions';
+  description: string;
+  rating_parameter: string | null;
+  images: string[] | null;
+  votes: TopicVote[];
+  status: 'active' | 'archived';
+  userVoteType: 'upvote' | 'downvote' | null;
+
+  created_at: string;
+  updated_at: string;
+  archived_at: string | null;
+}
 
 const ConflictsScreen = () => {
-  const [filter, setFilter] = React.useState('general');
+  console.log('[ConflictsScreen] Rendering');
+  const [filter, setFilter] = React.useState<'general' | 'conflict' | 'mentions'>('general');
+  
+  
+  const { handleVote, isVoting } = useTopicVoting();
 
-  const conflicts = [
-    {
-      id: 1,
-      title: "Kitchen Cleanliness Issue",
-      createdBy: "John Doe",
-      createdFor: "Jane Smith",
-      createdAt: "2024-02-05",
-      description: "Dishes left unwashed for 3 days",
-      status: "active",
-      votes: 2,
-      type: "Cleanliness"
-    },
-    {
-        id: 1,
-        title: "Kitchen Cleanliness Issue",
-        createdBy: "John Doe",
-        createdFor: "Jane Smith",
-        createdAt: "2024-02-05",
-        description: "Dishes left unwashed for 3 days",
-        status: "resolved",
-        votes: 2,
-        type: "Cleanliness"
-      },
-      {
-        id: 1,
-        title: "Kitchen Cleanliness Issue",
-        createdBy: "John Doe",
-        createdFor: "Jane Smith",
-        createdAt: "2024-02-05",
-        description: "Dishes left unwashed for 3 days",
-        status: "active",
-        votes: 2,
-        type: "Cleanliness"
-      },
-      {
-        id: 1,
-        title: "Kitchen Cleanliness Issue",
-        createdBy: "John Doe",
-        createdFor: "Jane Smith",
-        createdAt: "2024-02-05",
-        description: "Dishes left unwashed for 3 days",
-        status: "active",
-        votes: 2,
-        type: "Cleanliness"
-      }
-  ];
+  const { 
+    topics, 
+    isLoading,
+    isFetching,
+    error,
+    refetch 
+  } = useTopics({ 
+    enabled: true,
+    onSuccess: (data) => {
+      console.log('[ConflictsScreen] Topics loaded:', {
+        total: data?.length,
+        active: data?.filter(t => t.status === 'active').length
+      });
+    }
+  });
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'general': return '#6B7280';  // Gray
-      case 'conflict': return '#EF4444'; // Red
-      case 'mention': return '#10B981';  // Green
-      default: return '#6B7280';
+  // Filter topics based on selected filter and status
+  const filteredTopics = React.useMemo(() => {
+    console.log('[ConflictsScreen] Filtering topics:', {
+      filter,
+      totalTopics: topics?.length
+    });
+
+    if (!topics) return [];
+    return topics.filter(topic => 
+      topic.type === filter && topic.status === 'active'
+    );
+  }, [topics, filter]);
+
+  const formatTimestamp = (timestamp: string) => {
+    try {
+      const date = new Date(timestamp);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('[ConflictsScreen] Date formatting error:', error);
+      return timestamp;
     }
   };
 
-  const renderConflictCard = ({ item }: { item: typeof conflicts[0] }) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View>
-          <View style={[
-            styles.statusBadge, 
-            item.status === 'active' ? styles.activeBadge : styles.resolvedBadge
-          ]}>
-            <Text style={[
-              styles.statusText,
-              item.status === 'active' ? styles.activeText : styles.resolvedText
-            ]}>
-              {item.status.toUpperCase()}
-            </Text>
-          </View>
-          <Text style={styles.title}>{item.title}</Text>
-          <Text style={styles.description}>{item.description}</Text>
-          
-          <View style={styles.userInfo}>
-            <Text style={styles.infoText}>By: {item.createdBy}</Text>
-            <Text style={styles.infoText}>For: {item.createdFor}</Text>
-          </View>
-        </View>
-        <Icon name="chevron-right" size={20} color="#9CA3AF" />
-      </View>
+  // const renderTopicCard =  React.useCallback(({ item }: { item: Topic }) => {
 
-      <View style={styles.cardFooter}>
-        <View style={styles.actions}>
-          <TouchableOpacity style={styles.actionButton}>
-            <Icon name="thumbs-up" size={16} color="#4B5563" />
-            <Text style={styles.actionText}>Support ({item.votes})</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionButton}>
-            <Icon name="thumbs-down" size={16} color="#4B5563" />
-            <Text style={styles.actionText}>Disagree</Text>
-          </TouchableOpacity>
+  //   const currentVote = getUserVote(item.id);
+
+  //   console.log('[ConflictsScreen] Rendering topic:', {
+  //     id: item.id,
+  //     currentVote,
+  //     voteCount: item.votes[0]?.count
+  //   });
+
+  //   return (
+  //     <View style={styles.card}>
+  //       <View style={styles.cardHeader}>
+  //         <View>
+  //           <View style={[
+  //             styles.statusBadge, 
+  //             item.type === 'conflict' ? styles.conflictBadge : 
+  //             item.type === 'mentions' ? styles.mentionsBadge : 
+  //             styles.generalBadge
+  //           ]}>
+  //             <Text style={[
+  //               styles.statusText,
+  //               item.type === 'conflict' ? styles.conflictText :
+  //               item.type === 'mentions' ? styles.mentionsText :
+  //               styles.generalText
+  //             ]}>
+  //               {item.type.toUpperCase()}
+  //             </Text>
+  //           </View>
+  //           <Text style={styles.title}>{item.description}</Text>
+            
+  //           <View style={styles.userInfo}>
+  //             <Text style={styles.infoText}>By: {item.created_by.name}</Text>
+  //             {item.created_for.length > 0 && (
+  //               <Text style={styles.infoText}>For: {item.created_for.length} members</Text>
+  //             )}
+  //           </View>
+  //         </View>
+  //         <Icon name="chevron-right" size={20} color="#9CA3AF" />
+  //       </View>
+
+
+  //       <View style={styles.cardFooter}>
+  //       <View style={styles.actions}>
+  //         <TouchableOpacity 
+  //           style={[
+  //             styles.actionButton,
+  //             currentVote === 'upvote' && styles.activeAction
+  //           ]}
+  //           onPress={() => handleVote(item.id, 'upvote')}
+  //           disabled={isVoting}
+  //         >
+  //           <Icon 
+  //             name="thumbs-up" 
+  //             size={16} 
+  //             color={currentVote === 'upvote' ? '#2563EB' : '#4B5563'} 
+  //           />
+  //           <Text style={[
+  //             styles.actionText,
+  //             currentVote === 'upvote' && styles.activeActionText
+  //           ]}>
+  //             Support ({item.votes[0]?.count || 0})
+  //           </Text>
+  //         </TouchableOpacity>
+          
+  //         <TouchableOpacity 
+  //           style={[
+  //             styles.actionButton,
+  //             currentVote === 'downvote' && styles.activeAction
+  //           ]}
+  //           onPress={() => handleVote(item.id, 'downvote')}
+  //           disabled={isVoting}
+  //         >
+  //           <Icon 
+  //             name="thumbs-down" 
+  //             size={16} 
+  //             color={currentVote === 'downvote' ? '#DC2626' : '#4B5563'} 
+  //           />
+  //           <Text style={[
+  //             styles.actionText,
+  //             currentVote === 'downvote' && styles.activeActionText
+  //           ]}>
+  //             Disagree
+  //           </Text>
+  //         </TouchableOpacity>
+  //       </View>
+  //       <Text style={styles.date}>
+  //         {formatTimestamp(item.created_at)}
+  //       </Text>
+  //     </View>
+  //   </View>
+  // );
+  // }, [getUserVote, handleVote, isVoting]);
+
+
+const renderTopicCard = React.useCallback(({ item }: { item: Topic }) => {
+    // const { handleVote, isVoting } = useTopicVoting();
+    
+    console.log('[ConflictsScreen] Rendering topic card:', {
+      topicId: item.id,
+      userVoteType: item.userVoteType
+    });
+  
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View>
+            <View style={[
+              styles.statusBadge, 
+              item.type === 'conflict' ? styles.conflictBadge : 
+              item.type === 'mentions' ? styles.mentionsBadge : 
+              styles.generalBadge
+            ]}>
+              <Text style={[
+                styles.statusText,
+                item.type === 'conflict' ? styles.conflictText :
+                item.type === 'mentions' ? styles.mentionsText :
+                styles.generalText
+              ]}>
+                {item.type.toUpperCase()}
+              </Text>
+            </View>
+            <Text style={styles.title}>{item.description}</Text>
+            
+            <View style={styles.userInfo}>
+              <Text style={styles.infoText}>By: {item.created_by.name}</Text>
+              {item.created_for.length > 0 && (
+                <Text style={styles.infoText}>For: {item.created_for.length} members</Text>
+              )}
+            </View>
+          </View>
+          <Icon name="chevron-right" size={20} color="#9CA3AF" />
         </View>
-        <Text style={styles.date}>{item.createdAt}</Text>
+  
+        <View style={styles.cardFooter}>
+          <View style={styles.actions}>
+            <TouchableOpacity 
+              style={[
+                styles.actionButton,
+                item.userVoteType === 'upvote' && styles.activeAction
+              ]}
+              onPress={() => handleVote(item.id, 'upvote')}
+              disabled={isVoting}
+            >
+              <Icon 
+                name="thumbs-up" 
+                size={16} 
+                color={item.userVoteType === 'upvote' ? '#2563EB' : '#4B5563'} 
+              />
+              <Text style={[
+                styles.actionText,
+                item.userVoteType === 'upvote' && styles.activeActionText
+              ]}>
+                Support
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[
+                styles.actionButton,
+                item.userVoteType === 'downvote' && styles.activeAction
+              ]}
+              onPress={() => handleVote(item.id, 'downvote')}
+              disabled={isVoting}
+            >
+              <Icon 
+                name="thumbs-down" 
+                size={16} 
+                color={item.userVoteType === 'downvote' ? '#DC2626' : '#4B5563'} 
+              />
+              <Text style={[
+                styles.actionText,
+                item.userVoteType === 'downvote' && styles.activeActionText
+              ]}>
+                Disagree
+              </Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.date}>
+            {formatTimestamp(item.created_at)}
+          </Text>
+        </View>
       </View>
-    </View>
-  );
+    );
+  }, [handleVote]);
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2563EB" />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <Text style={styles.headerTitle}>Conflicts</Text>
-          <TouchableOpacity style={styles.filterButton}>
-            <Icon name="filter" size={20} color="#000" />
+          <Text style={styles.headerTitle}>Topics</Text>
+          <TouchableOpacity 
+            style={styles.filterButton}
+            onPress={() => refetch()}
+          >
+            <Icon 
+              name={isFetching ? "refresh-ccw" : "filter"} 
+              size={20} 
+              color="#000" 
+            />
           </TouchableOpacity>
         </View>
         
         <View style={styles.filterTabs}>
-          {['general', 'conflict', 'mention'].map(tab => (
+          {['general', 'conflict', 'mentions'].map(tab => (
             <TouchableOpacity
               key={tab}
-              onPress={() => setFilter(tab)}
+              onPress={() => setFilter(tab as 'general' | 'conflict' | 'mentions')}
               style={[
                 styles.filterTab,
                 filter === tab && styles.activeFilterTab
@@ -138,20 +318,41 @@ const ConflictsScreen = () => {
       </View>
 
       <FlatList
-        data={conflicts}
-        renderItem={renderConflictCard}
-        keyExtractor={item => item.id.toString()}
+        data={filteredTopics}
+        renderItem={renderTopicCard}
+        keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
+        onRefresh={refetch}
+        refreshing={isFetching}
+        ListEmptyComponent={() => (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No {filter} topics found</Text>
+          </View>
+        )}
       />
 
       <TouchableOpacity style={styles.fab}>
-        <Icon name="alert-triangle" size={24} color="#FFF" />
+        <Icon name="plus" size={24} color="#FFF" />
       </TouchableOpacity>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+  },
+  emptyContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  emptyText: {
+    color: '#6B7280',
+    fontSize: 16,
+  },
   container: {
     flex: 1,
     backgroundColor: '#F3F4F6',
@@ -197,7 +398,6 @@ const styles = StyleSheet.create({
   },
   list: {
     padding: 16,
-    gap: 16,
   },
   card: {
     backgroundColor: '#FFF',
@@ -220,30 +420,31 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignSelf: 'flex-start',
   },
-  activeBadge: {
+  conflictBadge: {
     backgroundColor: '#FEE2E2',
   },
-  resolvedBadge: {
+  mentionsBadge: {
     backgroundColor: '#D1FAE5',
+  },
+  generalBadge: {
+    backgroundColor: '#E5E7EB',
   },
   statusText: {
     fontSize: 12,
   },
-  activeText: {
+  conflictText: {
     color: '#DC2626',
   },
-  resolvedText: {
+  mentionsText: {
     color: '#059669',
+  },
+  generalText: {
+    color: '#374151',
   },
   title: {
     fontSize: 16,
     fontWeight: '500',
     marginTop: 8,
-  },
-  description: {
-    fontSize: 14,
-    color: '#4B5563',
-    marginTop: 4,
   },
   userInfo: {
     flexDirection: 'row',
@@ -282,7 +483,7 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: 32,
+    bottom: 100,
     right: 16,
     backgroundColor: '#2563EB',
     width: 56,
@@ -295,6 +496,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 4,
     elevation: 5,
+  },
+  activeAction: {
+    opacity: 0.8,
+  },
+  activeActionText: {
+    color: '#2563EB',
   },
 });
 
