@@ -19,27 +19,6 @@ const HomeScreen = () => {
   const { houseData, isLoading: isHouseLoading, getMemberWithRatings, members } = useHomeScreen();
   const [selectedUser, setSelectedUser] = useState(null);
 
-  // const { 
-  //   activeTopicsCount, 
-  //   isLoading: isTopicsLoading,
-  //   refetch 
-  // } = useTopics({
-  //   enabled: false // Don't load immediately
-    
-  // });
-
-  // Load topics after initial render
-  // useEffect(() => {
-  //   let timer: NodeJS.Timeout;
-  //   if (!isTopicsLoading) {
-  //     timer = setTimeout(() => {
-  //       refetch().catch(error => {
-  //         console.error('Failed to load topics:', error);
-  //       });
-  //     }, 2000);
-  //   }
-  //   return () => clearTimeout(timer);
-  // }, [isTopicsLoading]);
 
   const isLoading = isHouseLoading;
 
