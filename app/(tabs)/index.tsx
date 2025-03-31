@@ -6,21 +6,19 @@ import {
   ScrollView,
   StyleSheet,
   SafeAreaView,
-  Image,  
   Modal,
   ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 
 import { useHomeScreen } from '@/hooks/useHomeScreen';
-// import { useTopics } from '@/hooks/useTopics';
+import { Avatar } from '@/components/ui/Avatar';
+import { useImageUrl } from '@/hooks/useImageUrl';
 
 const HomeScreen = () => {
+  console.log('HomeScreen rendering ..');
   const { houseData, isLoading: isHouseLoading, getMemberWithRatings, members } = useHomeScreen();
   const [selectedUser, setSelectedUser] = useState(null);
-
-
-  const isLoading = isHouseLoading;
 
   // Get active issues count
   const activeIssuesCount = -1;
@@ -42,7 +40,7 @@ const HomeScreen = () => {
     return Math.round(totalRatings / members.length);
   };
 
-  if (isLoading) {
+  if (isHouseLoading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#2563EB" />
@@ -55,7 +53,6 @@ const HomeScreen = () => {
   
     const memberData = getMemberWithRatings(tenant.id);
     const ratings = memberData?.ratings?.data?.filter(rating => rating.value !== null) || [];
-    // console.log("[Rating Modal] ratings", ratings);
   
     return (
       <Modal
@@ -68,9 +65,9 @@ const HomeScreen = () => {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <View style={styles.userHeaderInfo}>
-                <Image
-                  source={memberData?.image_url ? { uri: memberData.image_url } : { uri: 'https://via.placeholder.com/48' }}
-                  style={styles.modalAvatar}
+                <Avatar 
+                  imageKey={memberData?.image_key} 
+                  size={40} 
                 />
                 <Text style={styles.modalUserName}>{memberData?.name}</Text>
               </View>
@@ -109,9 +106,9 @@ const HomeScreen = () => {
       </Modal>
     );
   };
+  
   const TenantCard = ({ memberId }) => {
     const member = getMemberWithRatings(memberId);
-    // console.log("Tenant Card member",member);
     if (!member) return null;
 
     return (
@@ -120,9 +117,10 @@ const HomeScreen = () => {
         onPress={() => setSelectedUser(member)}
       >
         <View style={styles.cardHeader}>
-          <Image
-            source={member.image_url ? { uri: member.image_url } : { uri: 'https://via.placeholder.com/48' }}
-            style={styles.avatar}
+          {/* TODO: always insert latest image_key */}
+          <Avatar 
+            imageKey={member.image_key} 
+            size={48}
           />
           <View style={styles.userInfo}>
             <Text style={styles.userName}>{member.name}</Text>
@@ -163,10 +161,6 @@ const HomeScreen = () => {
           <Text style={styles.statValue}>{members?.length || 0}</Text>
           <Text style={styles.statLabel}>Members</Text>
         </View>
-        {/* <View style={styles.stat}>
-          <Text style={styles.statValue}>{activeIssuesCount}</Text>
-          <Text style={styles.statLabel}>Active Issues</Text>
-        </View> */}
         <View style={styles.stat}>
           <Text style={styles.statValue}>{calculateHouseRating()}</Text>
           <Text style={styles.statLabel}>House Rating</Text>
@@ -176,7 +170,6 @@ const HomeScreen = () => {
       <ScrollView style={styles.content}>
         <Text style={styles.sectionTitle}>Members</Text>
         {members?.map(member => (
-          // console.log("member.user.id",member.user.id),
           <TenantCard key={member.user.id} memberId={member.user.id} />
         ))}
       </ScrollView>
@@ -189,6 +182,7 @@ const HomeScreen = () => {
     </SafeAreaView>
   );
 };
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -257,12 +251,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#E5E7EB',
-  },
   userInfo: {
     flex: 1,
     marginLeft: 12,
@@ -308,16 +296,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  modalAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
-  },
   modalUserName: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1F2937',
+    marginLeft: 12,
   },
   ratingsContainer: {
     marginTop: 16,
@@ -352,6 +335,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#2563EB',
     width: 50,
+  },
+  ratingDescription: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  noRatingsText: {
+    textAlign: 'center',
+    fontSize: 16,
+    color: '#6B7280',
+    marginTop: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
   },
 });
 

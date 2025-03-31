@@ -46,7 +46,8 @@ const LoginScreen = () => {
       
       // Store token
       const token = response.token;
-      console.log('login is clicked Stored Token:', token);
+      // console.log('login is clicked Stored Token:', token);
+      console.log('login is clicked Stored Token');
       await AsyncStorage.setItem('auth_token', response.token);
       await AsyncStorage.setItem('refresh_token', response.refreshToken);
 

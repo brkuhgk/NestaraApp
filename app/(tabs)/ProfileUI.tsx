@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useAuth } from '@/app/context/auth';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useHouseStore } from '@/store/useHouseStore';
-import { Alert } from 'react-native';
+import { Alert, ActivityIndicator } from 'react-native';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import { useHomeScreen } from '@/hooks/useHomeScreen';
+import { useImageUrl } from '@/hooks/useImageUrl';
 
 const ProfileScreen = () => {
   const { user } = useAuthStore();
@@ -22,6 +23,9 @@ const ProfileScreen = () => {
   const { logout } = useAuth();
   
   const memberRating = getMemberWithRatings(user?.id);
+  console.log('[ProfileScreen] Member Rating:', user);
+  // Use the image hook to get the user's profile image URL
+  const { url: profileImageUrl, isLoading: isImageLoading } = useImageUrl(user?.image_key);
 
   // Calculate user ratings based on memberRating data
   const userRatings = useMemo(() => {
@@ -83,7 +87,8 @@ const ProfileScreen = () => {
   if (isHouseLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <Text>Loading...</Text>
+        <ActivityIndicator size="large" color="#2563EB" />
+        <Text style={styles.loadingText}>Loading profile...</Text>
       </View>
     );
   }
@@ -94,12 +99,16 @@ const ProfileScreen = () => {
         {/* Profile Header */}
         <View style={styles.header}>
           <View style={styles.profileImageContainer}>
-            <Image
-              source={{ 
-                uri: user?.image_url || 'https://placehold.jp/3d4070/ffffff/150x150.png' 
-              }}
-              style={styles.profileImage}
-            />
+            {isImageLoading ? (
+              <ActivityIndicator size="small" color="#2563EB" style={styles.profileImage} />
+            ) : (
+              <Image
+                source={{ 
+                  uri: profileImageUrl || 'https://placehold.jp/3d4070/ffffff/150x150.png' 
+                }}
+                style={styles.profileImage}
+              />
+            )}
             <TouchableOpacity 
               style={styles.editButton}
               onPress={() => router.push('/(modals)/edit-profile')}
@@ -352,6 +361,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#6B7280',
   },
   ratingDescription: {
     fontSize: 12,

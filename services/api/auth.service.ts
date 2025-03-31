@@ -11,7 +11,7 @@ export const authService = {
         try{
 
         const response = await api.post('/auth/login', credentials);
-        console.log('Auth Service - Login Response:', response.user.id);
+        console.log('Auth Service - Login Response: user is creating', response.image_url, response.image_key);
         return {
             user: {
                 id: response.user.id,
@@ -19,7 +19,9 @@ export const authService = {
                 name: response.user.user_metadata.name,
                 type: response.user.user_metadata.type,
                 username: response.user.user_metadata.username,
-                houseId: response.house_id
+                houseId: response.house_id,
+                image_key: response.image_key,
+                image_url: response.image_url
               },
               token: response.session.access_token,
               refreshToken: response.session.refresh_token,

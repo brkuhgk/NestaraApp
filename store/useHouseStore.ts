@@ -24,6 +24,7 @@ export interface HouseMember {
     email: string;
     phone: string;
     image_url: string | null;
+    image_key: string | null;
     bio: string | null;
     ratings: UserRating | MaintainerRating;
     joined_at: string;
