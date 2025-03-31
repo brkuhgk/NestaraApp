@@ -28,12 +28,12 @@ export function useHomeScreen() {
  // Add logging to debug
   // console.log('[ useHomescreen ] User:', user);
   // console.log('[ useHomeScreen ]Current House:', currentHouse);
-
+console.log("[ useHomeScreen ] Current House:", currentHouse?.members);
   // Fetch house details and members
   const { data: houseData, isLoading: isHouseLoading } = useQuery({
     queryKey: ['house', user?.houseId],
     queryFn: async () =>{ 
-      console.log('[House Query] Fetching house data:', {
+      console.log('[House Query] Fetching house data from server:', {
         houseId: user?.houseId,
         timestamp: new Date().toISOString()
       });

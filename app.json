@@ -10,14 +10,24 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.karthikboddudev.sun"
+      "bundleIdentifier": "com.karthikboddudev.sun",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to upload profile pictures and share images related to house issues.",
+        "NSCameraUsageDescription": "This app needs camera access to take photos for your profile and document house issues.",
+        "NSMicrophoneUsageDescription": "This app requires microphone access for recording videos."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.karthikboddudev.sun"
+      "package": "com.karthikboddudev.sun",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "bundler": "metro",
